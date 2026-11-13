@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Repo Indexer - Jack105WA/gams</title>
+    <style>
+        body { 
+            font-family: system-ui, -apple-system, sans-serif; 
+            margin: 0; 
+            display: flex; 
+            height: 100vh; 
+            overflow: hidden;
+        }
+        #sidebar {
+            width: 300px;
+            background: #f4f4f5;
+            border-right: 1px solid #d4d4d8;
+            display: flex;
+            flex-direction: column;
+        }
+        .controls {
+            padding: 15px;
+            background: #e4e4e7;
+            border-bottom: 1px solid #d4d4d8;
+        }
+        .controls input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 8px;
+            box-sizing: border-box;
+            border: 1px solid #a1a1aa;
+            border-radius: 4px;
+        }
+        .controls button {
+            width: 100%;
+            padding: 8px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .controls button:hover { background: #1d4ed8; }
+        
+        #file-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+        #file-list li {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e4e4e7;
+            cursor: pointer;
+            font-size: 14px;
+            word-break: break-all;
+        }
+        #file-list li:hover { background: #d4d4d8; }
+        #file-list li.active {
+            background: #bfdbfe;
+            border-left: 4px solid #2563eb;
+            padding-left: 11px;
+        }
+        
+        #main-content {
+            flex-grow: 1;
+            padding: 30px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR: Controls and File List -->
+    <div id="sidebar">
+        <div class="controls">
+            <label>GitHub Owner / Org:</label>
+            <input type="text" id="owner" value="Jack105WA">
+            
+            <label>Repository Name:</label>
+            <input type="text" id="repo" value="gams">
+            
+            <label>Branch:</label>
+            <input type="text" id="branch" placeholder="e.g., main or master" value="main">
+            
+            <button onclick="indexRepository()">Index Repository</button>
+        </div>
+        
+        <ul id="file-list">
+            <li style="color: #71717a; text-align: center; padding-top: 20px;">
+                Click "Index Repository" to load Jack105WA/gams
+            </li>
+        </ul>
+    </div>
+
+    <!-- MAIN AREA: Loaded HTML -->
+    <div id="main-content">
+        <h2>Content View</h2>
+        <p>Select an HTML file from the sidebar to load it here.</p>
+        <div id="content-container"></div>
+    </div>
+
+    <script>
+        const ownerInput = document.getElementById('owner');
+        const repoInput = document.getElementById('repo');
+        const branchInput = document.getElementById('branch');
+        const fileList = document.getElementById('file-list');
+        const contentContainer = document.getElementById('content-container');
+
+        // Step 1: Fetch the list of files from GitHub
+        async function indexRepository() {
+            const owner = ownerInput.value.trim();
+            const repo = repoInput.value.trim();
+            const branch = branchInput.value.trim() || 'main';
+            
+            if(!owner || !repo) {
+                alert("Please enter both an owner and a repository.");
+                return;
+            }
+
+            fileList.innerHTML = "<li style='color: #2563eb;'>Fetching repo index...</li>";
+
+            try {
+                // Using the GitHub Git Trees API to get a recursive list of ALL files in the repo
+                const treeUrl = `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`;
+                const response = await fetch(treeUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`Error ${response.status}: Check if the repo is public, spelled correctly, and the branch exists (usually 'main' or 'master').`);
+                }
+                
+                const data = await response.json();
+                
+                // Filter the results to only include HTML files
+                const htmlFiles = data.tree.filter(item => item.type === 'blob' && item.path.endsWith('.html'));
+                
+                fileList.innerHTML = ""; 
+                
+                if (htmlFiles.length === 0) {
+                    fileList.innerHTML = "<li>No HTML files found in this repository branch.</li>";
+                    return;
+                }
+
+                // Generate the list items
+                htmlFiles.forEach(file => {
+                    const li = document.createElement('li');
+                    li.textContent = file.path;
+                    
+                    // Construct the raw URL
+                    const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${file.path}`;
+                    
+                    li.onclick = () => loadContent(rawUrl, li);
+                    fileList.appendChild(li);
+                });
+
+            } catch (error) {
+                fileList.innerHTML = `<li style="color:red;">Failed to index: ${error.message}</li>`;
+            }
+        }
+
+        // Step 2: Fetch the actual HTML content when a file is clicked
+        async function loadContent(rawUrl, clickedItem) {
+            // Update UI to highlight the clicked item
+            document.querySelectorAll('#file-list li').forEach(el => el.classList.remove('active'));
+            clickedItem.classList.add('active');
+
+            contentContainer.innerHTML = "<h3 style='color: #2563eb;'>Loading...</h3>";
+
+            try {
+                const response = await fetch(rawUrl);
+                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+                
+                const htmlText = await response.text();
+                
+                // Inject the HTML
+                contentContainer.innerHTML = htmlText;
+            } catch (error) {
+                contentContainer.innerHTML = `<p style="color: red;">Failed to load content: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
