@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GitHub Repo Indexer - Jack105WA/gams</title>
+    <title>SaturnJS - GitHub Repo Indexer</title>
     <style>
         body { 
             font-family: system-ui, -apple-system, sans-serif; 
@@ -11,38 +11,45 @@
             display: flex; 
             height: 100vh; 
             overflow: hidden;
+            background: #1e1e2f;
+            color: white;
         }
         #sidebar {
-            width: 300px;
-            background: #f4f4f5;
-            border-right: 1px solid #d4d4d8;
+            width: 350px;
+            background: #2a2a40;
+            border-right: 1px solid #141420;
             display: flex;
             flex-direction: column;
+            margin: 0 auto;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
         .controls {
-            padding: 15px;
-            background: #e4e4e7;
-            border-bottom: 1px solid #d4d4d8;
+            padding: 20px;
+            background: #32324e;
+            border-bottom: 1px solid #141420;
         }
         .controls input {
             width: 100%;
-            padding: 8px;
-            margin-bottom: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
             box-sizing: border-box;
-            border: 1px solid #a1a1aa;
+            border: 1px solid #4a4a6a;
+            background: #1e1e2f;
+            color: white;
             border-radius: 4px;
         }
         .controls button {
             width: 100%;
-            padding: 8px;
-            background: #2563eb;
+            padding: 10px;
+            background: #4f46e5;
             color: white;
             border: none;
             border-radius: 4px;
             cursor: pointer;
             font-weight: bold;
+            font-size: 16px;
         }
-        .controls button:hover { background: #1d4ed8; }
+        .controls button:hover { background: #4338ca; }
         
         #file-list {
             list-style: none;
@@ -52,31 +59,32 @@
             flex-grow: 1;
         }
         #file-list li {
-            padding: 12px 15px;
-            border-bottom: 1px solid #e4e4e7;
+            padding: 15px 20px;
+            border-bottom: 1px solid #32324e;
             cursor: pointer;
             font-size: 14px;
             word-break: break-all;
+            transition: background 0.2s;
         }
-        #file-list li:hover { background: #d4d4d8; }
-        #file-list li.active {
-            background: #bfdbfe;
-            border-left: 4px solid #2563eb;
-            padding-left: 11px;
-        }
+        #file-list li:hover { background: #4a4a6a; }
         
-        #main-content {
+        /* Hiding the main area since we open in new tabs */
+        #main-area {
             flex-grow: 1;
-            padding: 30px;
-            overflow-y: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            text-align: center;
+            padding: 40px;
         }
     </style>
 </head>
 <body>
 
-    <!-- SIDEBAR: Controls and File List -->
     <div id="sidebar">
         <div class="controls">
+            <h2 style="margin-top:0;">SaturnJS Indexer</h2>
             <label>GitHub Owner / Org:</label>
             <input type="text" id="owner" value="Jack105WA">
             
@@ -84,23 +92,23 @@
             <input type="text" id="repo" value="gams">
             
             <label>Branch:</label>
-            <input type="text" id="branch" placeholder="e.g., main or master" value="main">
+            <input type="text" id="branch" value="main">
             
-            <button onclick="indexRepository()">Index Repository</button>
+            <button onclick="indexRepository()">Fetch Repository</button>
         </div>
         
         <ul id="file-list">
-            <li style="color: #71717a; text-align: center; padding-top: 20px;">
-                Click "Index Repository" to load Jack105WA/gams
+            <li style="color: #a1a1aa; text-align: center; padding-top: 20px;">
+                Click "Fetch Repository" to load
             </li>
         </ul>
     </div>
 
-    <!-- MAIN AREA: Loaded HTML -->
-    <div id="main-content">
-        <h2>Content View</h2>
-        <p>Select an HTML file from the sidebar to load it here.</p>
-        <div id="content-container"></div>
+    <div id="main-area">
+        <h1>SaturnJS</h1>
+        <p style="color: #a1a1aa; max-width: 400px;">
+            Select a file from the sidebar. It will be fetched directly from GitHub and executed safely in a new <b>about:blank</b> tab.
+        </p>
     </div>
 
     <script>
@@ -108,77 +116,77 @@
         const repoInput = document.getElementById('repo');
         const branchInput = document.getElementById('branch');
         const fileList = document.getElementById('file-list');
-        const contentContainer = document.getElementById('content-container');
 
-        // Step 1: Fetch the list of files from GitHub
         async function indexRepository() {
             const owner = ownerInput.value.trim();
             const repo = repoInput.value.trim();
             const branch = branchInput.value.trim() || 'main';
             
-            if(!owner || !repo) {
-                alert("Please enter both an owner and a repository.");
-                return;
-            }
+            if(!owner || !repo) return alert("Please enter owner and repository.");
 
-            fileList.innerHTML = "<li style='color: #2563eb;'>Fetching repo index...</li>";
+            fileList.innerHTML = "<li style='color: #4f46e5;'>Fetching repo index...</li>";
 
             try {
-                // Using the GitHub Git Trees API to get a recursive list of ALL files in the repo
                 const treeUrl = `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`;
                 const response = await fetch(treeUrl);
                 
-                if (!response.ok) {
-                    throw new Error(`Error ${response.status}: Check if the repo is public, spelled correctly, and the branch exists (usually 'main' or 'master').`);
-                }
+                if (!response.ok) throw new Error(`API Error ${response.status}`);
                 
                 const data = await response.json();
                 
-                // Filter the results to only include HTML files
-                const htmlFiles = data.tree.filter(item => item.type === 'blob' && item.path.endsWith('.html'));
+                // Exclude saturnjs-single.html from the list so you don't open the indexer inside the indexer
+                const htmlFiles = data.tree.filter(item => 
+                    item.type === 'blob' && 
+                    item.path.endsWith('.html') && 
+                    !item.path.includes('saturnjs-single.html')
+                );
                 
                 fileList.innerHTML = ""; 
                 
                 if (htmlFiles.length === 0) {
-                    fileList.innerHTML = "<li>No HTML files found in this repository branch.</li>";
+                    fileList.innerHTML = "<li>No other HTML files found.</li>";
                     return;
                 }
 
-                // Generate the list items
                 htmlFiles.forEach(file => {
                     const li = document.createElement('li');
                     li.textContent = file.path;
                     
-                    // Construct the raw URL
                     const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${file.path}`;
                     
-                    li.onclick = () => loadContent(rawUrl, li);
+                    li.onclick = () => loadInNewTab(rawUrl);
                     fileList.appendChild(li);
                 });
 
             } catch (error) {
-                fileList.innerHTML = `<li style="color:red;">Failed to index: ${error.message}</li>`;
+                fileList.innerHTML = `<li style="color:#ff6b6b;">Failed: ${error.message}</li>`;
             }
         }
 
-        // Step 2: Fetch the actual HTML content when a file is clicked
-        async function loadContent(rawUrl, clickedItem) {
-            // Update UI to highlight the clicked item
-            document.querySelectorAll('#file-list li').forEach(el => el.classList.remove('active'));
-            clickedItem.classList.add('active');
-
-            contentContainer.innerHTML = "<h3 style='color: #2563eb;'>Loading...</h3>";
-
+        async function loadInNewTab(rawUrl) {
             try {
                 const response = await fetch(rawUrl);
                 if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
                 
                 const htmlText = await response.text();
                 
-                // Inject the HTML
-                contentContainer.innerHTML = htmlText;
+                // Create a new about:blank tab
+                const newTab = window.open('about:blank', '_blank');
+                
+                // Inject the fetched HTML into the new tab
+                newTab.document.open();
+                newTab.document.write(htmlText);
+                newTab.document.close();
+                
+                // Attempt to set the title of the new tab
+                setTimeout(() => {
+                    if(newTab.document.title === "") {
+                        newTab.document.title = "SaturnJS - Loaded File";
+                    }
+                }, 100);
+
             } catch (error) {
-                contentContainer.innerHTML = `<p style="color: red;">Failed to load content: ${error.message}</p>`;
+                alert(`Failed to load content: ${error.message}`);
             }
         }
     </script>
