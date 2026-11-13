@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Loading SaturnJS...</title>
+</head>
+<body>
+    <h2 style="font-family: sans-serif; text-align: center; margin-top: 50px;">
+        Loading SaturnJS from GitHub...
+    </h2>
+
+    <script>
+        // Fetches saturnjs-single.html from your repo
+        const saturnJsUrl = 'https://raw.githubusercontent.com/Jack105WA/gams/main/saturnjs-single.html';
+
+        fetch(saturnJsUrl)
+            .then(response => {
+                if (!response.ok) throw new Error("Could not find saturnjs-single.html");
+                return response.text();
+            })
+            .then(html => {
+                // document.write completely overwrites this loader page with the new app
+                document.open();
+                document.write(html);
+                document.close();
+            })
+            .catch(error => {
+                document.body.innerHTML = `<h2 style="color:red; text-align:center;">Error: ${error.message}</h2>`;
+            });
+    </script>
+</body>
+</html>
