@@ -68,7 +68,6 @@
         }
         #file-list li:hover { background: #4a4a6a; }
         
-        /* Hiding the main area since we open in new tabs */
         #main-area {
             flex-grow: 1;
             display: flex;
@@ -134,7 +133,6 @@
                 
                 const data = await response.json();
                 
-                // Exclude saturnjs-single.html from the list so you don't open the indexer inside the indexer
                 const htmlFiles = data.tree.filter(item => 
                     item.type === 'blob' && 
                     item.path.endsWith('.html') && 
@@ -154,7 +152,8 @@
                     
                     const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${file.path}`;
                     
-                    li.onclick = () => loadInNewTab(rawUrl);
+                    // Pass both the URL and the filename so we can set the tab title
+                    li.onclick = () => loadInNewTab(rawUrl, file.path);
                     fileList.appendChild(li);
                 });
 
@@ -163,30 +162,38 @@
             }
         }
 
-        async function loadInNewTab(rawUrl) {
+        async function loadInNewTab(rawUrl, filename) {
+            // 1. OPEN TAB IMMEDIATELY on click to bypass browser popup blockers
+            const newTab = window.open('about:blank', '_blank');
+            
+            // 2. Write a temporary loading message so it isn't just a white screen
+            newTab.document.write(`
+                <body style="background: #1e1e2f; color: white; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0;">
+                    <h2>Fetching ${filename}...</h2>
+                </body>
+            `);
+
             try {
+                // 3. Now fetch the code from GitHub in the background
                 const response = await fetch(rawUrl);
                 if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
                 
                 const htmlText = await response.text();
                 
-                // Create a new about:blank tab
-                const newTab = window.open('about:blank', '_blank');
-                
-                // Inject the fetched HTML into the new tab
+                // 4. Overwrite the loading screen with the real HTML file
                 newTab.document.open();
                 newTab.document.write(htmlText);
                 newTab.document.close();
-                
-                // Attempt to set the title of the new tab
-                setTimeout(() => {
-                    if(newTab.document.title === "") {
-                        newTab.document.title = "SaturnJS - Loaded File";
-                    }
-                }, 100);
 
             } catch (error) {
-                alert(`Failed to load content: ${error.message}`);
+                // If it fails, show the error in the new tab
+                newTab.document.open();
+                newTab.document.write(`
+                    <body style="background: #1e1e2f; color: #ff6b6b; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0;">
+                        <h2>Failed to load ${filename}: ${error.message}</h2>
+                    </body>
+                `);
+                newTab.document.close();
             }
         }
     </script>
